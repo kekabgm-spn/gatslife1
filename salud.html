@@ -184,6 +184,10 @@
   .hl-fila.falta .h{color:#e0a02c;}
   .hl-fila em{color:var(--muted);font-size:0.75rem;font-style:normal;}
   .hl-abrir{background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.78rem;font-weight:700;text-decoration:underline;padding:0;}
+  .ar-fecha-campo{margin:10px 0 4px;}
+  .ar-fecha-campo label{display:block;font-size:0.8rem;color:var(--muted);margin-bottom:4px;}
+  .ar-fecha-campo input[type=date]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:1rem;}
+  .ar-fecha-campo small{display:block;color:var(--muted);font-size:0.75rem;margin-top:4px;}
   .tomado-card{background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:10px 14px;margin-bottom:14px;}
   .tomado-tit{font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:6px;}
   .tomado-fila{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:0.9rem;}
@@ -293,6 +297,7 @@
   <div id="ar-resumen"></div>
   <div id="ar-ficha"></div>
   <h2 style="margin-top:22px">Funcionalidad del día</h2>
+  <div class="ar-fecha-campo"><label for="ar-fecha-g">Fecha</label><input type="date" id="ar-fecha-g"><small>Puedes cambiarla si lo apuntas días después.</small></div>
   <p class="aviso" style="margin:0 0 8px">Dificultad: 0 ninguna · 1 leve · 2 moderada · 3 grave · 4 extrema.</p>
   <div id="ar-func"></div>
   <h2 style="margin-top:22px">Días registrados</h2>
@@ -1457,7 +1462,8 @@ function arFicha(){
   const box = document.getElementById("ar-ficha");
   if(!arSel){ box.innerHTML = ""; return; }
   const [zona,lado] = arSel.split("_"), r = (arDatos().dias[arFecha]||{z:{}}).z[arSel] || {};
-  let h = `<div class="form-add" style="display:block;margin-top:12px"><b>${arNombre(zona,lado)}</b>`;
+  let h = `<div class="form-add" style="display:block;margin-top:12px"><b>${arNombre(zona,lado)}</b>
+  <div class="ar-fecha-campo"><label for="ar-fecha-f">Fecha</label><input type="date" id="ar-fecha-f" value="${arFecha}"><small>Puedes cambiarla si marcas el dolor días después.</small></div>`;
   AR_ESCALAS.forEach(([c,t,m])=> h += `<div style="margin-top:8px;font-size:.85rem;color:var(--muted)">${t} (0–${m})</div>` + arBotones(arSel,c,m,c==="rig"?arComb(r):r[c]));
   h += `<textarea id="ar-nota" placeholder="Nota (opcional)">${(r.nota||"").replace(/</g,"&lt;")}</textarea>
   <div class="fila"><button type="button" class="btn-cancelar" id="ar-quitar">Quitar esta zona</button><button type="button" class="btn-guardar" id="ar-cerrar">Cerrar</button></div></div>`;
@@ -1467,6 +1473,7 @@ function arFicha(){
     z[k] = z[k] || {}; const cur = c==="rig" ? arComb(z[k]) : z[k][c]; z[k][c] = cur===+v ? undefined : +v; if(c==="rig"){ delete z[k].mov; delete z[k].sens; } z[k].dolor = z[k].dolor||0;
     arGuardar(d); renderArtic();
   });
+  document.getElementById("ar-fecha-f").onchange = e=>{ if(e.target.value){ arFecha = e.target.value; renderArtic(); } };   // cambia de día sin perder la zona elegida
   document.getElementById("ar-nota").onchange = e=>{ const d = arDatos(), z = arDia(d).z; z[arSel] = z[arSel]||{dolor:0}; z[arSel].nota = e.target.value.trim(); arGuardar(d); arHist(); };
   document.getElementById("ar-quitar").onclick = ()=>{ const d = arDatos(); if(d.dias[arFecha]){ delete d.dias[arFecha].z[arSel]; arGuardar(d); } arSel = null; renderArtic(); };
   document.getElementById("ar-cerrar").onclick = ()=>{ const d = arDatos(), z = (d.dias[arFecha]||{z:{}}).z, r = z[arSel]; if(r && !r.nota && !AR_ESCALAS.some(([c])=> (c==="rig"?arComb(r):r[c])>0)){ delete z[arSel]; arGuardar(d); } arSel = null; renderArtic(); };
@@ -1480,12 +1487,13 @@ function arFunc(){
     arGuardar(d); arFunc();
   });
 }
+function arFechaLeg(f){ const p = f.split("-"); return new Date(+p[0], +p[1]-1, +p[2]).toLocaleDateString("es-ES", {weekday:"short", day:"numeric", month:"short", year:"numeric"}); }
 function arHist(){
   const d = arDatos(), fechas = Object.keys(d.dias).sort().reverse();
   document.getElementById("ar-hist").innerHTML = fechas.length ? fechas.map(f=>{
     const z = Object.entries(d.dias[f].z), pico = z.reduce((m,[k,r])=> Math.max(m,r.dolor||0),0);
     const peor = z.filter(([k,r])=>(r.dolor||0)===pico && pico>0).map(([k])=>{const [a,b]=k.split("_");return arNombre(a,b);}).slice(0,2).join(", ");
-    return `<div class="form-add" style="display:block;margin:6px 0;cursor:pointer" data-f="${f}"><b>${f}</b> — ${z.length} zona(s)${pico?`, dolor máx. ${pico}`:""}${peor?` (${peor})`:""}</div>`;
+    return `<div class="form-add" style="display:block;margin:6px 0;cursor:pointer" data-f="${f}"><b>${arFechaLeg(f)}</b> — ${z.length} zona(s)${pico?`, dolor máx. ${pico}`:""}${peor?` (${peor})`:""}</div>`;
   }).join("") : `<p class="aviso">Aún no hay días registrados.</p>`;
   document.querySelectorAll("#ar-hist [data-f]").forEach(e=> e.onclick = ()=>{ arFecha = e.dataset.f; arSel = null; renderArtic(); window.scrollTo(0,0); });
 }
@@ -1498,10 +1506,12 @@ function arVisibilidad(){
 function renderArtic(){
   arVisibilidad();
   document.getElementById("ar-fecha").value = arFecha;
+  document.getElementById("ar-fecha-g").value = arFecha;
   document.getElementById("ar-v-ant").classList.toggle("on", arVista==="ant");
   document.getElementById("ar-v-pos").classList.toggle("on", arVista==="pos");
   arSVG(); arResumen(); arFicha(); arFunc(); arHist();
 }
+document.getElementById("ar-fecha-g").onchange = e=>{ if(e.target.value){ arFecha = e.target.value; arSel = null; renderArtic(); } };
 document.getElementById("ar-fecha").onchange = e=>{ if(e.target.value){ arFecha = e.target.value; arSel = null; renderArtic(); } };
 document.getElementById("ar-ant").onclick = ()=> arMover(-1);
 document.getElementById("ar-sig").onclick = ()=> arMover(1);
