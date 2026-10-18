@@ -97,6 +97,11 @@
   .hc-vacio{visibility:hidden}
   .hc-resumen{font-size:0.85rem;margin:0.6rem 0 0.2rem;color:var(--gris2)}
   .hc-detalle{font-size:0.85rem;margin-top:0.4rem}
+  .rz-ctrl{display:flex;gap:8px;margin:4px 0 8px}
+  .rz-ctrl input[type=date]{flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:#0c1210;color:inherit;font-family:inherit;font-size:0.95rem}
+  .rz-ctrl button{padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:inherit;cursor:pointer;font-weight:600}
+  .rz-resumen{font-size:0.88rem;margin:2px 0 6px;color:var(--gris2)}
+  .rz-toggle{width:100%;padding:10px;margin:2px 0 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:inherit;font-weight:700;cursor:pointer;font-size:0.95rem}
   .rz-dia{text-align:center;font-weight:700;font-size:0.88rem;margin:14px 0 4px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.12);text-transform:capitalize}
   .rz-fila{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.07);font-size:0.86rem}
   .rz-der{color:var(--gris);white-space:nowrap;font-weight:600}
@@ -369,6 +374,25 @@ Storage.prototype.setItem=function(k,v){o.apply(this,arguments);if(this===localS
 <div id="panel-historial" role="tabpanel" hidden>
 
 <fieldset>
+  <legend>📜 Hecho recientemente</legend>
+  <label for="rz-fecha" style="font-size:0.82rem;color:var(--gris)">📅 Buscar fecha</label>
+  <div class="rz-ctrl">
+    <input type="date" id="rz-fecha">
+    <button type="button" id="rz-limpiar">Ver todo</button>
+  </div>
+  <select id="rz-rango" style="margin-bottom:6px">
+    <option value="7">Últimos 7 días</option>
+    <option value="30" selected>Últimos 30 días</option>
+    <option value="90">Últimos 90 días</option>
+    <option value="0">Todo</option>
+  </select>
+  <div class="rz-resumen" id="rz-resumen"></div>
+  <div id="realizado-reciente"></div>
+</fieldset>
+
+<button type="button" id="hc-toggle" class="rz-toggle">📆 Ver calendario</button>
+<div id="hc-wrap" hidden>
+<fieldset>
   <legend>📆 Mi historial</legend>
   <div class="hc-nav">
     <button type="button" id="hc-prev" aria-label="Mes anterior">◀</button>
@@ -390,17 +414,7 @@ Storage.prototype.setItem=function(k,v){o.apply(this,arguments);if(this===localS
   <div class="hc-resumen" id="hc-resumen"></div>
   <div class="hc-detalle" id="hc-detalle"></div>
 </fieldset>
-
-<fieldset>
-  <legend>📜 Hecho recientemente</legend>
-  <select id="rz-rango" style="margin-bottom:6px">
-    <option value="7">Últimos 7 días</option>
-    <option value="30" selected>Últimos 30 días</option>
-    <option value="90">Últimos 90 días</option>
-    <option value="0">Todo</option>
-  </select>
-  <div id="realizado-reciente"></div>
-</fieldset>
+</div>
 
 </div>
 
@@ -1369,19 +1383,45 @@ function renderRealizado(){
   hoyEl.innerHTML = deHoy.length
     ? deHoy.map(fila).join('') + (sumaKcal(deHoy) != null ? '<div class="rz-total">Total de hoy: <b>' + sumaKcal(deHoy) + ' kcal</b> extra</div>' : '<div class="rz-total">Falta tu peso para calcular las kcal.</div>')
     : '<p class="empty">Todavía no marcaste nada como hecho hoy.</p>';
+  // Resumen del mes en curso
+  const ym = hoy.slice(0,7), delMes = hist.filter(x => String(x.fecha).slice(0,7) === ym);
+  const diasMes = new Set(delMes.map(x => x.fecha)).size, kMes = sumaKcal(delMes);
+  document.getElementById('rz-resumen').textContent = diasMes
+    ? diasMes + (diasMes === 1 ? ' día con ejercicio' : ' días con ejercicio') + ' este mes' + (kMes != null ? ' · ' + kMes + ' kcal' : '')
+    : 'Todavía no hay ejercicio apuntado este mes.';
+  const nombreDia = f => { const p = f.split('-'); return new Date(+p[0], +p[1]-1, +p[2]).toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'long'}); };
+
+  // Buscar una fecha concreta
+  const fSel = document.getElementById('rz-fecha').value;
+  document.getElementById('rz-rango').style.display = fSel ? 'none' : '';
+  if(fSel){
+    const items = hist.filter(x => x.fecha === fSel).sort((a,b) => String(a.hora||'').localeCompare(String(b.hora||'')));
+    const pasosD = (leerJSONfit('huaweiDiaV1_' + perfil, {}) || {})[fSel];
+    const kd = sumaKcal(items);
+    recEl.innerHTML = '<div class="rz-dia">' + hcEsc(nombreDia(fSel)) + (kd != null ? ' · ' + kd + ' kcal' : '') + '</div>'
+      + (items.length ? items.map(fila).join('') : '<p class="empty">No hay ejercicio apuntado ese día.</p>')
+      + (pasosD && pasosD.pasos != null ? '<div class="rz-total">👣 Pasos ese día: <b>' + Number(pasosD.pasos).toLocaleString('es-ES') + '</b></div>' : '');
+    return;
+  }
+
   const dias = parseInt(document.getElementById('rz-rango').value, 10) || 0;
   let desde = ''; if(dias){ const d = new Date(); d.setDate(d.getDate() - dias + 1); desde = hcISO(d.getFullYear(), d.getMonth(), d.getDate()); }
   const porDia = {};
   hist.filter(x => !desde || x.fecha >= desde).forEach(x => { (porDia[x.fecha] = porDia[x.fecha] || []).push(x); });
   const fechas = Object.keys(porDia).sort().reverse();
   recEl.innerHTML = fechas.length ? fechas.map(f => {
-    const p = f.split('-'), nom = new Date(+p[0], +p[1]-1, +p[2]).toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'long'});
     const items = porDia[f].slice().sort((a,b) => String(b.hora||'').localeCompare(String(a.hora||'')));
-    const kd = sumaKcal(items);
-    return '<div class="rz-dia">' + hcEsc(nom) + (kd != null ? ' · ' + kd + ' kcal' : '') + '</div>' + items.map(fila).join('');
+    const k2 = sumaKcal(items);
+    return '<div class="rz-dia">' + hcEsc(nombreDia(f)) + (k2 != null ? ' · ' + k2 + ' kcal' : '') + '</div>' + items.map(fila).join('');
   }).join('') : '<p class="empty">No hay nada registrado en este rango.</p>';
 }
 document.getElementById('rz-rango').onchange = renderRealizado;
+document.getElementById('rz-fecha').onchange = renderRealizado;
+document.getElementById('rz-limpiar').onclick = () => { document.getElementById('rz-fecha').value = ''; renderRealizado(); };
+document.getElementById('hc-toggle').onclick = () => {
+  const w = document.getElementById('hc-wrap'); w.hidden = !w.hidden;
+  document.getElementById('hc-toggle').textContent = w.hidden ? '📆 Ver calendario' : '📆 Ocultar calendario';
+};
 const _rh2 = renderHistorial; renderHistorial = function(){ _rh2.apply(this, arguments); renderRealizado(); };
 
 cargarPerfilBusqueda();
