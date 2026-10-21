@@ -1,8 +1,8 @@
 // sw.js — funciona sin conexión. Sube VERSION cada vez que cambies archivos para que se actualice la caché.
-const VERSION = "nuestra-app-vv53";
+const VERSION = "nuestra-app-vv54";
 const LOCAL = ["./","index.html","ajustes.html","nutricion.html","ejercicios.html","tareas.html","calendario.html","salud.html","huawei.html","informes.html",
   "nube.js","pasos.js","buscar.js","analisis.js","claves.js","familia.js","tema.js","nutricion.js","nutricion.css","calendario.js","calendario.css","manifest.json","icono.png","icono-192.png","icono-maskable-192.png","icono-maskable-512.png","gato-mamy.png","gato-filha.png",
-  "cuerpo-anterior.jpg","cuerpo-posterior.jpg"];
+  "pdflib.js","cuerpo-anterior.jpg","cuerpo-posterior.jpg"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSION).then(c => Promise.all(LOCAL.map(u => c.add(u).catch(()=>{})))).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {

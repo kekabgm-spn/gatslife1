@@ -186,7 +186,7 @@
   .hl-abrir{background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.78rem;font-weight:700;text-decoration:underline;padding:0;}
   .ar-fecha-campo{margin:10px 0 4px;}
   .ar-fecha-campo label{display:block;font-size:0.8rem;color:var(--muted);margin-bottom:4px;}
-  .ar-fecha-campo input[type=date]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:1rem;}
+  .ar-fecha-campo input[type=date],.ar-fecha-campo input[type=month],.ar-fecha-campo input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:1rem;}
   .ar-fecha-campo small{display:block;color:var(--muted);font-size:0.75rem;margin-top:4px;}
   .tomado-card{background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:10px 14px;margin-bottom:14px;}
   .tomado-tit{font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:6px;}
@@ -302,6 +302,17 @@
   <div id="ar-func"></div>
   <h2 style="margin-top:22px">Días registrados</h2>
   <div id="ar-hist"></div>
+
+  <h2 style="margin-top:22px">Informe para el médico</h2>
+  <div class="form-add" style="display:block">
+    <p class="aviso" style="margin:0 0 8px">Genera un PDF con tus registros de articulaciones: un día concreto o un mes completo, con el detalle de cada zona, la funcionalidad y tus notas.</p>
+    <div class="tabs-vista"><button type="button" id="inf-t-dia" class="on">Diario</button><button type="button" id="inf-t-mes">Mensual</button></div>
+    <div id="inf-dia" class="ar-fecha-campo"><label for="inf-fecha">Día</label><input type="date" id="inf-fecha"></div>
+    <div id="inf-mes" class="ar-fecha-campo" style="display:none"><label for="inf-mesinp">Mes</label><input type="month" id="inf-mesinp"></div>
+    <div class="ar-fecha-campo"><label for="inf-nombre">Nombre que aparece en el informe</label><input type="text" id="inf-nombre" autocomplete="off"></div>
+    <button type="button" class="btn-guardar" id="inf-generar" style="width:100%;margin-top:12px">📄 Descargar informe PDF</button>
+    <p class="aviso" id="inf-msg" style="margin:8px 0 0"></p>
+  </div>
 </section>
 
 <!-- SÍNTOMAS -->
@@ -1509,7 +1520,7 @@ function renderArtic(){
   document.getElementById("ar-fecha-g").value = arFecha;
   document.getElementById("ar-v-ant").classList.toggle("on", arVista==="ant");
   document.getElementById("ar-v-pos").classList.toggle("on", arVista==="pos");
-  arSVG(); arResumen(); arFicha(); arFunc(); arHist();
+  arSVG(); arResumen(); arFicha(); arFunc(); arHist(); arInfDefaults();
 }
 document.getElementById("ar-fecha-g").onchange = e=>{ if(e.target.value){ arFecha = e.target.value; arSel = null; renderArtic(); } };
 document.getElementById("ar-fecha").onchange = e=>{ if(e.target.value){ arFecha = e.target.value; arSel = null; renderArtic(); } };
@@ -1518,6 +1529,202 @@ document.getElementById("ar-sig").onclick = ()=> arMover(1);
 document.getElementById("ar-hoy").onclick = ()=>{ arFecha = new Date().toLocaleDateString("sv-SE"); arSel = null; renderArtic(); };
 document.getElementById("ar-v-ant").onclick = ()=>{ arVista = "ant"; renderArtic(); };
 document.getElementById("ar-v-pos").onclick = ()=>{ arVista = "pos"; renderArtic(); };
+
+// ================= Informe PDF para el médico (Articulaciones) =================
+const AR_NIV3 = ["ninguna","leve","moderada","grave"], AR_NIV4 = ["ninguna","leve","moderada","grave","extrema"];
+function arFechaLarga(iso){ const p = iso.split("-"); const t = new Date(+p[0], +p[1]-1, +p[2]).toLocaleDateString("es-ES", {weekday:"long", day:"numeric", month:"long", year:"numeric"}); return t.charAt(0).toUpperCase()+t.slice(1); }
+function arFechaCorta(iso){ const p = iso.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
+function arMesLargo(ym){ const p = ym.split("-"); const t = new Date(+p[0], +p[1]-1, 1).toLocaleDateString("es-ES", {month:"long", year:"numeric"}); return t.charAt(0).toUpperCase()+t.slice(1); }
+function arCargarScript(src){ return new Promise((ok,ko)=>{ const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ()=> ko(new Error("No se pudo cargar "+src)); document.head.appendChild(s); }); }
+async function arAsegurarPDF(){
+  const listo = () => window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable;
+  if(!listo()) await arCargarScript("pdflib.js");
+  if(!listo()) throw new Error("pdflib.js incompleto");
+}
+function arRegsDia(dia){
+  return Object.entries((dia && dia.z) || {}).map(([k,r])=>{ const [zona,lado] = k.split("_"); return {k, nombre:arNombre(zona,lado), dolor:r.dolor||0, infl:r.infl||0, rig:arComb(r), nota:(r.nota||"").trim()}; });
+}
+function arFuncDia(dia){ const f = (dia && dia.f) || {}; return Object.keys(f).map(i=>({i:+i, v:f[i]})).filter(x=>typeof x.v === "number"); }
+
+function arPdfBase(titulo, sub, nombre){
+  const {jsPDF} = window.jspdf; const doc = new jsPDF({unit:"mm", format:"a4"});
+  doc.setFillColor(25,95,75); doc.rect(0,0,210,28,"F");
+  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.text(titulo, 15, 13);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(sub, 15, 21);
+  doc.setTextColor(40,40,40); doc.setFontSize(10);
+  doc.text("Paciente: "+nombre, 15, 36);
+  doc.text("Generado el "+arFechaCorta(hoyISO()), 195, 36, {align:"right"});
+  doc.setDrawColor(200); doc.setLineWidth(0.2); doc.line(15, 39, 195, 39);
+  return {doc, y:46};
+}
+function arPdfPies(doc){
+  const n = doc.getNumberOfPages();
+  for(let i=1; i<=n; i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(120);
+    doc.text("Registro personal del paciente (autopercepción); no sustituye la valoración clínica.", 15, 289);
+    doc.text("Página "+i+" de "+n, 195, 289, {align:"right"}); }
+}
+function arTitulo(doc, y, txt){
+  if(y > 262){ doc.addPage(); y = 20; }
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(25,95,75); doc.text(txt, 15, y);
+  doc.setTextColor(40,40,40); doc.setFont("helvetica","normal"); doc.setFontSize(10); return y+6;
+}
+function arLineas(doc, y, lineas){
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(40,40,40);
+  lineas.forEach(l=>{ if(y > 280){ doc.addPage(); y = 20; } const partes = doc.splitTextToSize(l, 180); doc.text(partes, 15, y); y += 5.2*partes.length; });
+  return y+2;
+}
+function arTabla(doc, y, head, body, opts){
+  doc.autoTable(Object.assign({startY:y, head:[head], body, theme:"grid", margin:{top:15, left:15, right:15, bottom:18},
+    styles:{font:"helvetica", fontSize:9, cellPadding:1.8, textColor:[40,40,40], lineColor:[210,210,210], lineWidth:0.2, valign:"middle"},
+    headStyles:{fillColor:[25,95,75], textColor:255, fontStyle:"bold"}, alternateRowStyles:{fillColor:[245,248,247]}}, opts || {}));
+  return doc.lastAutoTable.finalY + 6;
+}
+function arLeyenda(doc, y){
+  y = arTitulo(doc, y, "Escalas utilizadas");
+  return arLineas(doc, y, ["Dolor: 0 (nada) a 10 (máximo imaginable).", "Inflamación y rigidez / movilidad limitada / sensibilidad: 0 (ninguna), 1 (leve), 2 (moderada), 3 (grave).", "Dificultad en actividades: 0 (ninguna), 1 (leve), 2 (moderada), 3 (grave), 4 (extrema)."]);
+}
+
+// ---------- Informe de un día ----------
+function arPDFDia(iso, nombre, dia){
+  const base = arPdfBase("Informe diario de articulaciones", arFechaLarga(iso), nombre); const doc = base.doc; let y = base.y;
+  const regs = arRegsDia(dia).sort((a,b)=> b.dolor-a.dolor || b.infl-a.infl || b.rig-a.rig);
+  const fv = arFuncDia(dia);
+  y = arTitulo(doc, y, "Resumen del día");
+  const lin = [];
+  if(regs.length){
+    const conDolor = regs.filter(r=>r.dolor>0);
+    lin.push("Zonas registradas: "+regs.length+" ("+conDolor.length+" con dolor).");
+    if(conDolor.length){ const media = conDolor.reduce((t,r)=>t+r.dolor,0)/conDolor.length; lin.push("Dolor máximo: "+regs[0].dolor+"/10 ("+regs[0].nombre+"). Dolor medio de las zonas con dolor: "+(Math.round(media*10)/10)+"/10."); }
+    else lin.push("Sin dolor en las zonas registradas.");
+    lin.push("Inflamación máxima: "+Math.max.apply(null, regs.map(r=>r.infl))+"/3. Rigidez / movilidad limitada máxima: "+Math.max.apply(null, regs.map(r=>r.rig))+"/3.");
+  } else lin.push("No se registraron zonas dolorosas este día.");
+  if(fv.length){ const suma = fv.reduce((t,x)=>t+x.v,0); lin.push("Dificultad en actividades: suma "+suma+" sobre "+(fv.length*4)+" ("+(Math.round(suma/fv.length*10)/10)+" de media por actividad, escala 0-4)."); }
+  y = arLineas(doc, y, lin);
+  if(regs.length){
+    y = arTitulo(doc, y, "Zonas afectadas");
+    y = arTabla(doc, y, ["Zona","Dolor","Inflamación","Rigidez / movilidad","Nota"],
+      regs.map(r=>[r.nombre, r.dolor+"/10", r.infl+"/3 ("+AR_NIV3[r.infl]+")", r.rig+"/3 ("+AR_NIV3[r.rig]+")", r.nota || "-"]),
+      {columnStyles:{0:{cellWidth:44}, 1:{cellWidth:16, halign:"center"}, 2:{cellWidth:30}, 3:{cellWidth:32}, 4:{cellWidth:"auto"}}});
+  }
+  y = arTitulo(doc, y, "Funcionalidad (dificultad para realizar actividades)");
+  if(fv.length) y = arTabla(doc, y, ["Actividad","Dificultad","Nivel"], fv.sort((a,b)=>a.i-b.i).map(x=>[AR_FUNC[x.i], x.v+"/4", AR_NIV4[x.v]]), {columnStyles:{0:{cellWidth:90}, 1:{cellWidth:30, halign:"center"}}});
+  else y = arLineas(doc, y, ["No se registró la funcionalidad este día."]);
+  arLeyenda(doc, y);
+  arPdfPies(doc);
+  return doc;
+}
+
+// ---------- Gráfico de línea: dolor máximo de cada día ----------
+function arGrafico(doc, x, y, w, h, vals, n){
+  doc.setDrawColor(190); doc.setLineWidth(0.2); doc.rect(x, y, w, h);
+  doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(110);
+  const px = d => x + ((d-1)/Math.max(n-1,1))*w, py = v => y + h - (v/10)*h;
+  for(let v=0; v<=10; v+=2){ doc.setDrawColor(228); doc.line(x, py(v), x+w, py(v)); doc.text(String(v), x-2, py(v)+1, {align:"right"}); }
+  for(let d=1; d<=n; d++){ if(d===1 || d%5===0 || (d===n && n%5>=3)) doc.text(String(d), px(d), y+h+4, {align:"center"}); }
+  doc.setDrawColor(25,95,75); doc.setLineWidth(0.5);
+  for(let d=1; d<n; d++){ if(vals[d] != null && vals[d+1] != null) doc.line(px(d), py(vals[d]), px(d+1), py(vals[d+1])); }
+  for(let d=1; d<=n; d++){ if(vals[d] != null){ const v = vals[d]; if(v >= 7) doc.setFillColor(200,60,50); else if(v >= 4) doc.setFillColor(225,150,40); else doc.setFillColor(25,95,75); doc.circle(px(d), py(vals[d]), 1.2, "F"); } }
+  doc.setLineWidth(0.2); doc.setTextColor(40,40,40);
+}
+
+// ---------- Informe de un mes ----------
+function arPDFMes(ym, nombre, dias){
+  const base = arPdfBase("Informe mensual de articulaciones", arMesLargo(ym), nombre); const doc = base.doc; let y = base.y;
+  const fechas = Object.keys(dias).sort();
+  const [Y,M] = ym.split("-").map(Number), nDias = new Date(Y, M, 0).getDate();
+  const hoy = hoyISO(), limite = (ym === hoy.slice(0,7)) ? +hoy.slice(8,10) : nDias;
+  const porDia = fechas.map(f=>{
+    const regs = arRegsDia(dias[f]), pico = regs.reduce((m,r)=>Math.max(m,r.dolor), 0), fv = arFuncDia(dias[f]);
+    return {f, regs, pico, peores: regs.filter(r=>pico>0 && r.dolor===pico).map(r=>r.nombre), fn:fv.length, fsum: fv.reduce((t,x)=>t+x.v,0), fv};
+  });
+  const conZonas = porDia.filter(d=>d.regs.length);
+  const zonas = {};
+  porDia.forEach(d=> d.regs.forEach(r=>{ const z = zonas[r.nombre] || (zonas[r.nombre] = {nombre:r.nombre, dias:0, diasDolor:0, sum:0, max:0, infl:0, rig:0}); z.dias++; if(r.dolor>0) z.diasDolor++; z.sum += r.dolor; z.max = Math.max(z.max, r.dolor); z.infl = Math.max(z.infl, r.infl); z.rig = Math.max(z.rig, r.rig); }));
+  const listaZonas = Object.values(zonas).sort((a,b)=> b.diasDolor-a.diasDolor || b.max-a.max);
+
+  y = arTitulo(doc, y, "Resumen del mes");
+  const lin = [];
+  lin.push("Días con registro: "+fechas.length+" de "+limite+(ym === hoy.slice(0,7) ? " (hasta hoy)." : "."));
+  if(conZonas.length){
+    const conDolor = conZonas.filter(d=>d.pico>0), picoMes = conZonas.reduce((m,d)=>Math.max(m,d.pico), 0), diaPico = conZonas.find(d=>d.pico===picoMes);
+    lin.push("Días con dolor: "+conDolor.length+" de "+conZonas.length+" con zonas registradas.");
+    if(picoMes > 0) lin.push("Dolor máximo del mes: "+picoMes+"/10 el "+arFechaCorta(diaPico.f)+" ("+diaPico.peores.slice(0,3).join(", ")+").");
+    lin.push("Promedio del dolor máximo diario: "+(Math.round(conZonas.reduce((t,d)=>t+d.pico,0)/conZonas.length*10)/10)+"/10.");
+    lin.push("Zonas distintas afectadas: "+listaZonas.filter(z=>z.diasDolor>0).length+". Inflamación máxima: "+Math.max.apply(null, listaZonas.map(z=>z.infl))+"/3. Rigidez / movilidad limitada máxima: "+Math.max.apply(null, listaZonas.map(z=>z.rig))+"/3.");
+  } else lin.push("No hay zonas dolorosas registradas este mes.");
+  const conFunc = porDia.filter(d=>d.fn>0);
+  if(conFunc.length){ const tot = conFunc.reduce((t,d)=>t+d.fsum,0), cnt = conFunc.reduce((t,d)=>t+d.fn,0); lin.push("Dificultad en actividades: media "+(Math.round(tot/cnt*10)/10)+" (escala 0-4) en "+conFunc.length+" días registrados."); }
+  y = arLineas(doc, y, lin);
+
+  if(conZonas.length){
+    y = arTitulo(doc, y, "Evolución del dolor máximo diario");
+    if(y > 200){ doc.addPage(); y = 20; y = arTitulo(doc, y, "Evolución del dolor máximo diario"); }
+    const vals = {}; conZonas.forEach(d=>{ vals[+d.f.slice(8,10)] = d.pico; });
+    arGrafico(doc, 22, y+2, 168, 55, vals, limite);
+    y += 66;
+    y = arLineas(doc, y, ["Eje vertical: dolor máximo registrado ese día (0-10). Eje horizontal: día del mes. Los días sin registro quedan en blanco."]);
+  }
+  if(listaZonas.length){
+    y = arTitulo(doc, y, "Resumen por zona");
+    y = arTabla(doc, y, ["Zona","Días registrada","Días con dolor","Dolor máx.","Dolor medio","Inflam. máx.","Rigidez máx."],
+      listaZonas.map(z=>[z.nombre, z.dias, z.diasDolor, z.max+"/10", (Math.round(z.sum/z.dias*10)/10)+"/10", z.infl+"/3", z.rig+"/3"]),
+      {columnStyles:{0:{cellWidth:50}, 1:{halign:"center"}, 2:{halign:"center"}, 3:{halign:"center"}, 4:{halign:"center"}, 5:{halign:"center"}, 6:{halign:"center"}}});
+  }
+  if(porDia.length){
+    y = arTitulo(doc, y, "Detalle por día");
+    y = arTabla(doc, y, ["Fecha","Zonas","Dolor máx.","Zonas más afectadas","Actividades (dificultad)"],
+      porDia.map(d=>[arFechaCorta(d.f), d.regs.length || "-", d.regs.length ? d.pico+"/10" : "-", d.peores.length ? d.peores.slice(0,3).join(", ")+(d.peores.length>3 ? "…" : "") : "-", d.fn ? d.fsum+"/"+(d.fn*4) : "-"]),
+      {columnStyles:{0:{cellWidth:24}, 1:{cellWidth:16, halign:"center"}, 2:{cellWidth:22, halign:"center"}, 3:{cellWidth:"auto"}, 4:{cellWidth:36, halign:"center"}}});
+  }
+  if(conFunc.length){
+    y = arTitulo(doc, y, "Actividades: dificultad media del mes");
+    const filas = AR_FUNC.map((t,i)=>{ const v = []; porDia.forEach(d=>{ const x = d.fv.find(q=>q.i===i); if(x) v.push(x.v); }); return v.length ? [t, (Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10)+"/4", Math.max.apply(null,v)+"/4", v.length] : null; }).filter(Boolean);
+    y = arTabla(doc, y, ["Actividad","Media","Máxima","Días registrados"], filas, {columnStyles:{0:{cellWidth:90}, 1:{halign:"center"}, 2:{halign:"center"}, 3:{halign:"center"}}});
+  }
+  const notas = []; porDia.forEach(d=> d.regs.filter(r=>r.nota).forEach(r=> notas.push([arFechaCorta(d.f), r.nombre, r.nota])));
+  if(notas.length){ y = arTitulo(doc, y, "Notas del paciente"); y = arTabla(doc, y, ["Fecha","Zona","Nota"], notas, {columnStyles:{0:{cellWidth:24}, 1:{cellWidth:50}}}); }
+  arLeyenda(doc, y);
+  arPdfPies(doc);
+  return doc;
+}
+
+// ---------- Botón y panel ----------
+var arInfModo = "dia", arInfTocado = false;
+function arInfPonerModo(m){
+  arInfModo = m;
+  document.getElementById("inf-t-dia").classList.toggle("on", m==="dia"); document.getElementById("inf-t-mes").classList.toggle("on", m==="mes");
+  document.getElementById("inf-dia").style.display = m==="dia" ? "" : "none"; document.getElementById("inf-mes").style.display = m==="mes" ? "" : "none";
+  document.getElementById("inf-msg").textContent = "";
+}
+function arInfDefaults(){
+  if(!arInfTocado){ document.getElementById("inf-fecha").value = arFecha; document.getElementById("inf-mesinp").value = arFecha.slice(0,7); }
+  const n = document.getElementById("inf-nombre"); if(!n.dataset.listo || n.dataset.perfil !== perfilActivo){ n.value = localStorage.getItem("arInfNombreV1_"+perfilActivo) || perfilActivo; n.dataset.listo = "1"; n.dataset.perfil = perfilActivo; }
+}
+document.getElementById("inf-t-dia").onclick = ()=> arInfPonerModo("dia");
+document.getElementById("inf-t-mes").onclick = ()=> arInfPonerModo("mes");
+document.getElementById("inf-fecha").onchange = ()=>{ arInfTocado = true; };
+document.getElementById("inf-mesinp").onchange = ()=>{ arInfTocado = true; };
+document.getElementById("inf-generar").onclick = async ()=>{
+  const msg = document.getElementById("inf-msg"); msg.textContent = "Preparando el PDF…";
+  try{ await arAsegurarPDF(); }catch(e){ msg.textContent = "No se pudo cargar el generador de PDF. Comprueba que el archivo pdflib.js está subido junto a la app y que tienes conexión la primera vez."; return; }
+  const nombre = document.getElementById("inf-nombre").value.trim() || perfilActivo;
+  try{ localStorage.setItem("arInfNombreV1_"+perfilActivo, nombre); }catch(e){}
+  const datos = arDatos().dias; let doc, archivo;
+  if(arInfModo === "dia"){
+    const f = document.getElementById("inf-fecha").value; if(!f){ msg.textContent = "Elige un día."; return; }
+    const dia = datos[f]; if(!dia || (!Object.keys(dia.z||{}).length && !arFuncDia(dia).length)){ msg.textContent = "No hay nada registrado el "+arFechaCorta(f)+"."; return; }
+    doc = arPDFDia(f, nombre, dia); archivo = "informe-articulaciones-"+f+".pdf";
+  } else {
+    const ym = document.getElementById("inf-mesinp").value; if(!ym){ msg.textContent = "Elige un mes."; return; }
+    const delMes = {}; Object.keys(datos).filter(f=>f.slice(0,7)===ym).forEach(f=>{ const d = datos[f]; if(Object.keys(d.z||{}).length || arFuncDia(d).length) delMes[f] = d; });
+    if(!Object.keys(delMes).length){ msg.textContent = "No hay nada registrado en "+arMesLargo(ym)+"."; return; }
+    doc = arPDFMes(ym, nombre, delMes); archivo = "informe-articulaciones-"+ym+".pdf";
+  }
+  try{ doc.save(archivo); }catch(e){}
+  let enlace = ""; try{ enlace = ' <a href="'+doc.output("bloburl")+'" target="_blank" rel="noopener">Abrir el PDF</a>'; }catch(e){}
+  msg.innerHTML = "✓ Informe generado ("+escapar(archivo)+")."+enlace;
+};
+
 
 // ---------- SÍNTOMAS (texto libre) ----------
 function claveSint(){ return "saludSintomasV1_"+perfilActivo; }
