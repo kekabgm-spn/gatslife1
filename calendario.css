@@ -83,6 +83,7 @@
   .pts{display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-height:9px;}
   .pto{width:8px;height:8px;border-radius:50%;background:var(--c);}
   .pto.ind{background:transparent;border:2px solid var(--c);}
+  .pto.cruz{width:11px;height:11px;border-radius:0;border:0;background:var(--c);clip-path:polygon(34% 0,66% 0,66% 34%,100% 34%,100% 66%,66% 66%,66% 100%,34% 100%,34% 66%,0 66%,0 34%,34% 34%);}
   .mas{font-size:0.62rem;color:var(--muted);line-height:1;}
   .barras{display:flex;gap:2px;margin-top:auto;}
   .barras i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,0.07);}
@@ -202,6 +203,7 @@
   .prox{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left;}
   .prox:first-of-type{border-top:0;}
   .prox .pto{flex:none;width:10px;height:10px;}
+  .prox .pto.cruz{width:13px;height:13px;}
   .prox .p-t{flex:1;min-width:0;font-size:0.88rem;overflow-wrap:anywhere;}
   .prox .p-c{font-size:0.74rem;color:var(--muted);white-space:nowrap;text-align:right;}
 

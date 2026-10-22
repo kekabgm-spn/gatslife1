@@ -188,6 +188,21 @@
   .ar-fecha-campo label{display:block;font-size:0.8rem;color:var(--muted);margin-bottom:4px;}
   .ar-fecha-campo input[type=date],.ar-fecha-campo input[type=month],.ar-fecha-campo input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:1rem;}
   .ar-fecha-campo small{display:block;color:var(--muted);font-size:0.75rem;margin-top:4px;}
+  .ficha-sub{font-size:0.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:20px 0 8px;font-weight:700;}
+  .ficha-fila{display:flex;gap:10px;padding:6px 0;font-size:0.88rem;border-bottom:1px solid var(--line);}
+  .ficha-fila b{min-width:128px;color:var(--muted);font-weight:600;}
+  .ficha-fila span{flex:1;min-width:0;white-space:pre-wrap;}
+  .ficha-lin{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:0.88rem;border-bottom:1px solid var(--line);}
+  .ficha-lin .d{color:var(--muted);font-size:0.78rem;white-space:nowrap;text-align:right;}
+  .cruz-esp{display:inline-block;width:11px;height:11px;background:var(--c);clip-path:polygon(34% 0,66% 0,66% 34%,100% 34%,100% 66%,66% 66%,66% 100%,34% 100%,34% 66%,0 66%,0 34%,34% 34%);margin-right:5px;vertical-align:-1px;}
+  .estado-cond{font-size:0.7rem;font-weight:700;border-radius:999px;padding:1px 9px;border:1px solid currentColor;margin-left:6px;vertical-align:1px;white-space:nowrap;}
+  .estado-cond.activa{color:#e0a02c;} .estado-cond.controlada{color:var(--accent);} .estado-cond.remision{color:#5aa2ff;}
+  .chips-med{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .chip-med{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:0.78rem;}
+  .cond-meds{display:flex;flex-direction:column;gap:4px;}
+  .cond-sub{font-size:0.82rem;margin-top:6px;}
+  .prb-pend{color:#e0a02c;font-weight:700;font-size:0.78rem;margin-left:6px;}
+  .btn-mini{background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:4px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;margin-top:6px;}
   .tomado-card{background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:10px 14px;margin-bottom:14px;}
   .tomado-tit{font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:6px;}
   .tomado-fila{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:0.9rem;}
@@ -332,13 +347,46 @@
 
 <!-- CONDICIONES -->
 <section class="panel" id="panel-condiciones">
+  <h2>Ficha médica</h2>
+  <button type="button" class="btn-nueva" id="ficha-pdf">📄 Descargar resumen PDF</button>
+  <p class="aviso" id="ficha-msg" style="margin:6px 0 0"></p>
+
+  <h3 class="ficha-sub">Datos rápidos</h3>
+  <div id="ficha-datos"></div>
+  <form class="form-add" id="form-ficha" style="display:none">
+    <div><label>Alergias e intolerancias</label><textarea id="ficha-alergias" placeholder="Medicamentos, alimentos…"></textarea></div>
+    <div class="fila">
+      <div><label>Grupo sanguíneo</label>
+        <select id="ficha-sangre"><option value="">Sin indicar</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>0+</option><option>0-</option></select>
+      </div>
+      <div><label>Médico de cabecera</label><input type="text" id="ficha-cabecera" placeholder="Nombre y centro"></div>
+    </div>
+    <div class="fila">
+      <div><label>Contacto de emergencia</label><input type="text" id="ficha-cont-nombre" placeholder="Nombre"></div>
+      <div><label>Teléfono</label><input type="tel" id="ficha-cont-tel" placeholder="Teléfono"></div>
+    </div>
+    <div class="fila">
+      <button type="button" class="btn-guardar" onclick="guardarFicha()">Guardar</button>
+      <button type="button" class="btn-cancelar" onclick="cerrarForm('ficha')">Cancelar</button>
+    </div>
+  </form>
+
+  <h3 class="ficha-sub">Condiciones</h3>
   <button class="btn-nueva" data-abrir="condiciones">+ Añadir condición</button>
   <form class="form-add" id="form-condiciones" style="display:none">
     <input type="hidden" id="cond-id">
     <div><label>Nombre</label><input type="text" id="cond-nombre" placeholder="Ej. Enfisema"></div>
     <div class="fila">
+      <div><label>Estado</label>
+        <select id="cond-estado"><option value="activa">Activa</option><option value="controlada">Controlada</option><option value="remision">En remisión</option></select>
+      </div>
       <div><label>Desde (opcional)</label><input type="date" id="cond-desde"></div>
     </div>
+    <div><label>Especialista que la lleva</label>
+      <select id="cond-esp"></select>
+      <input type="text" id="cond-esp-otro" placeholder="Escribe la especialidad" style="display:none;margin-top:6px">
+    </div>
+    <div><label>Pastillas relacionadas</label><div id="cond-meds" class="cond-meds"></div></div>
     <div><label>Notas</label><textarea id="cond-notas" placeholder="Estado, tratamiento, lo que convenga recordar"></textarea></div>
     <div class="fila">
       <button type="button" class="btn-guardar" onclick="guardarCondicion()">Guardar</button>
@@ -346,6 +394,15 @@
     </div>
   </form>
   <div id="lista-condiciones"></div>
+
+  <h3 class="ficha-sub">Medicación actual</h3>
+  <div id="ficha-med"></div>
+  <h3 class="ficha-sub">Próximas citas</h3>
+  <div id="ficha-citas"></div>
+  <h3 class="ficha-sub">Pruebas</h3>
+  <div id="ficha-pruebas"></div>
+  <h3 class="ficha-sub">Cirugías</h3>
+  <div id="ficha-cir"></div>
 </section>
 
 <!-- CIRUGÍAS -->
@@ -493,7 +550,7 @@
   <form class="form-add" id="form-pruebas" style="display:none">
     <input type="hidden" id="prb-id">
     <div class="fila">
-      <div><label>Fecha</label><input type="date" id="prb-fecha"></div>
+      <div><label id="prb-fecha-lab">Fecha</label><input type="date" id="prb-fecha"></div>
       <div><label>Tipo</label>
         <select id="prb-tipo">
           <option value="analitica">Analítica</option>
@@ -503,6 +560,14 @@
         </select>
       </div>
     </div>
+    <div><label>Estado</label>
+      <select id="prb-estado" onchange="prbEtiquetaFecha()"><option value="hecha">Hecha (ya tengo el resultado)</option><option value="pendiente">Pendiente (pedida, aún sin hacer)</option></select>
+    </div>
+    <div><label>Pedida por (especialista)</label>
+      <select id="prb-esp"></select>
+      <input type="text" id="prb-esp-otro" placeholder="Escribe la especialidad" style="display:none;margin-top:6px">
+    </div>
+    <div><label>Para la condición</label><select id="prb-cond"></select></div>
     <div><label>Resumen / valores</label><textarea id="prb-notas" placeholder="Lo relevante del resultado"></textarea></div>
     <div><label>Adjuntar resultado (opcional)</label><input type="file" id="prb-archivo" accept="image/*,application/pdf"><div style="font-size:12px;opacity:.7;margin-top:4px">Analíticas: la IA lee el archivo y no se guarda. Otras pruebas: se guarda comprimido si cabe.</div></div>
     <div class="fila">
@@ -597,6 +662,7 @@ document.querySelectorAll("#tabsPerfil button").forEach(b=> b.onclick = () => ca
 document.querySelectorAll("#tabsSec button").forEach(b=> b.onclick = () => cambiarSeccion(b.dataset.sec));
 function cambiarSeccion(s){
   seccionActiva = s;
+  if(s === "condiciones" && typeof renderCondiciones === "function") renderCondiciones();
   document.querySelectorAll("#tabsSec button").forEach(b=> b.classList.toggle("on", b.dataset.sec === s));
   document.querySelectorAll("section.panel").forEach(p=> p.classList.toggle("on", p.id === "panel-"+s));
 }
@@ -610,6 +676,12 @@ function abrirForm(sec, item){
     document.getElementById("cond-nombre").value = item ? item.nombre : "";
     document.getElementById("cond-desde").value = item ? (item.desde||"") : "";
     document.getElementById("cond-notas").value = item ? (item.notas||"") : "";
+    document.getElementById("cond-estado").value = (item && item.estado) ? item.estado : "activa";
+    espPonerUI("cond-esp","cond-esp-otro", item ? item.espId : "", item ? item.espTxt : "");
+    const _sel = new Set(item && item.meds ? item.meds : []);
+    document.getElementById("cond-meds").innerHTML = medicacion.length
+      ? medicacion.map(m=>'<label class="check"><input type="checkbox" value="'+m.id+'"'+(_sel.has(m.id)?" checked":"")+'> '+escapar(m.nombre)+(dosisTexto(m)?" · "+escapar(dosisTexto(m)):"")+'</label>').join("")
+      : '<p class="empty" style="margin:0">Aún no hay pastillas. Créalas en la pestaña Medicación.</p>';
   } else if(sec === "cirugias"){
     document.getElementById("cir-id").value = item ? item.id : "";
     document.getElementById("cir-fecha").value = item ? (item.fecha||"") : hoyISO();
@@ -634,10 +706,11 @@ function abrirForm(sec, item){
     document.getElementById("prb-fecha").value = item ? (item.fecha||"") : hoyISO();
     document.getElementById("prb-tipo").value = item ? item.tipo : "analitica";
     document.getElementById("prb-notas").value = item ? (item.notas||"") : "";
+    prbPonerUI(item);
   }
 }
 function cerrarForm(sec){ document.getElementById("form-"+sec).style.display = "none"; }
-function cerrarTodosLosForms(){ ["condiciones","cirugias","medicacion","pruebas"].forEach(cerrarForm); }
+function cerrarTodosLosForms(){ ["condiciones","cirugias","medicacion","pruebas","ficha"].forEach(cerrarForm); }
 
 function leerArchivo(input, comprimir){
   return new Promise((resolve)=>{
@@ -654,33 +727,184 @@ function leerArchivo(input, comprimir){
   });
 }
 
+// ---------- Especialistas: misma lista y mismos colores que el Calendario ----------
+const ESP_TONOS = ["#3ab66c","#ff8a3d","#e5484d","#4cc9f0","#9d6bff","#ff7eb6","#b5e048","#a8325e","#1fbfa6","#b07a4f","#f5d547","#4f5de8","#e23fc4","#22b8cf","#9aa5b5","#d9d2c3"]; // = TONOS de calendario.js
+const ESP_LIBRE_COLOR = "#8fb5a3";
+const ESP_DEFECTO = [["s1","Cabecera",["Mamy","Filha"]],["s2","Traumatólogo",["Mamy"]],["s3","Reumatólogo",["Mamy"]],["s4","Neumólogo",["Mamy"]],["s5","Inflix (terapia)",["Mamy"]],["s6","Matrona",["Mamy","Filha"]],["s7","Vacunas",["Mamy","Filha"]],["s8","Analíticas",["Mamy","Filha"]],["s9","Pruebas",["Mamy","Filha"]],["s10","",["Mamy","Filha"]],["s11","Gastroenterólogo",["Mamy","Filha"]],["s12","Oculista",["Mamy","Filha"]],["s13","Ginecólogo",["Mamy","Filha"]],["s14","Dentista",["Mamy","Filha"]],["s15","",["Mamy","Filha"]],["s16","",["Mamy","Filha"]]];
+function espTodos(){
+  const g = leerJSON("calEspecialistasV2", null);
+  return ESP_DEFECTO.map((d,i)=>{
+    const x = Array.isArray(g) ? g.find(q=>q && q.id===d[0]) : null;
+    return {id:d[0], nombre: (x && typeof x.nombre==="string") ? x.nombre : d[1],
+      tono: (x && Number.isInteger(x.tono) && x.tono>=0 && x.tono<ESP_TONOS.length) ? x.tono : i,
+      perfiles: (x && Array.isArray(x.perfiles)) ? x.perfiles : d[2]};
+  }).filter(s=>s.nombre.trim());
+}
+function espParaPerfil(){ return espTodos().filter(s=>s.perfiles.includes(perfilActivo)); }
+function espInfoDe(id, txt){
+  const t = espTodos(); let s = id ? t.find(x=>x.id===id) : null;
+  if(!s && txt){ const n = String(txt).trim().toLowerCase(); s = t.find(x=>x.nombre.trim().toLowerCase()===n); }
+  if(s) return {nombre:s.nombre.trim(), color:ESP_TONOS[s.tono]};
+  if(txt && String(txt).trim()) return {nombre:String(txt).trim(), color:ESP_LIBRE_COLOR};
+  return null;
+}
+function cruzEsp(info){ return info ? '<span class="cruz-esp" style="--c:'+info.color+'"></span>'+escapar(info.nombre) : ""; }
+// Desplegable de especialistas (+ «Otro» con texto libre)
+function espPonerUI(selId, otroId, id, txt){
+  const sel = document.getElementById(selId), o = document.getElementById(otroId), todos = espTodos(), lista = espParaPerfil();
+  const extra = (id && !lista.find(x=>x.id===id) && todos.find(x=>x.id===id)) ? [todos.find(x=>x.id===id)] : [];
+  sel.innerHTML = '<option value="">— Sin especificar —</option>' + lista.concat(extra).map(s=>'<option value="'+s.id+'">'+escapar(s.nombre.trim())+'</option>').join("") + '<option value="otro">Otro (escribir)…</option>';
+  let v = ""; if(id && todos.find(x=>x.id===id)) v = id; else if(txt) v = "otro";
+  sel.value = v; o.value = v==="otro" ? (txt||"") : ""; o.style.display = v==="otro" ? "" : "none";
+  sel.onchange = ()=>{ o.style.display = sel.value==="otro" ? "" : "none"; };
+}
+function espLeer(selId, otroId){
+  const v = document.getElementById(selId).value;
+  if(v==="otro") return {espId:"", espTxt:document.getElementById(otroId).value.trim()};
+  if(!v) return {espId:"", espTxt:""};
+  const i = espInfoDe(v,""); return {espId:v, espTxt:i ? i.nombre : ""};
+}
+
+// ---------- Datos rápidos ----------
+function claveFicha(){ return "saludFichaV1_"+perfilActivo; }
+function leerFicha(){ return leerJSON(claveFicha(), {}) || {}; }
+function abrirFicha(){
+  cerrarTodosLosForms(); const f = leerFicha();
+  document.getElementById("ficha-alergias").value = f.alergias || "";
+  document.getElementById("ficha-sangre").value = f.sangre || "";
+  document.getElementById("ficha-cabecera").value = f.cabecera || "";
+  document.getElementById("ficha-cont-nombre").value = f.contNombre || "";
+  document.getElementById("ficha-cont-tel").value = f.contTel || "";
+  document.getElementById("form-ficha").style.display = "flex";
+}
+function guardarFicha(){
+  const f = { alergias: document.getElementById("ficha-alergias").value.trim(), sangre: document.getElementById("ficha-sangre").value,
+    cabecera: document.getElementById("ficha-cabecera").value.trim(), contNombre: document.getElementById("ficha-cont-nombre").value.trim(), contTel: document.getElementById("ficha-cont-tel").value.trim() };
+  guardarJSON(claveFicha(), f); cerrarForm("ficha"); renderFicha();
+}
+
+// ---------- Condiciones ----------
+const ESTADO_COND = {activa:"Activa", controlada:"Controlada", remision:"En remisión"};
 function guardarCondicion(){
   const nombre = document.getElementById("cond-nombre").value.trim();
   if(!nombre) return avisar("Poné un nombre para la condición.");
   const id = document.getElementById("cond-id").value || nuevoId();
-  const item = { id, nombre, desde: document.getElementById("cond-desde").value || "", notas: document.getElementById("cond-notas").value.trim() };
+  const e = espLeer("cond-esp","cond-esp-otro");
+  const meds = Array.from(document.querySelectorAll("#cond-meds input:checked")).map(x=>x.value);
+  const item = { id, nombre, desde: document.getElementById("cond-desde").value || "", estado: document.getElementById("cond-estado").value,
+    espId: e.espId, espTxt: e.espTxt, meds, notas: document.getElementById("cond-notas").value.trim() };
   const i = condiciones.findIndex(x=>x.id===id);
   if(i>-1) condiciones[i] = item; else condiciones.push(item);
   guardarJSON(claveCond(), condiciones);
   cerrarForm("condiciones"); renderCondiciones();
 }
 async function borrarCondicion(id){ if(!(await confirmar("¿Borrar esta condición?",{si:"Borrar",peligro:true}))) return; condiciones = condiciones.filter(x=>x.id!==id); guardarJSON(claveCond(), condiciones); renderCondiciones(); }
+function pruebasDeCond(id){ return pruebas.filter(p=>p.cond===id); }
 function renderCondiciones(){
+  renderFicha();
   const cont = document.getElementById("lista-condiciones");
   if(!condiciones.length){ cont.innerHTML = '<p class="empty">Sin condiciones registradas todavía.</p>'; return; }
-  cont.innerHTML = condiciones.map(c => `
+  cont.innerHTML = condiciones.map(c => {
+    const e = espInfoDe(c.espId, c.espTxt);
+    const meds = (c.meds||[]).map(id=>medicacion.find(m=>m.id===id)).filter(Boolean);
+    const prs = pruebasDeCond(c.id), pend = prs.filter(p=>p.estado==="pendiente");
+    const hechas = prs.filter(p=>p.estado!=="pendiente").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+    return `
     <div class="tarjeta">
       <div class="tarjeta-top">
-        <div><div class="tarjeta-nombre">${escapar(c.nombre)}</div>
-        ${c.desde ? `<div class="tarjeta-meta">Desde ${fechaLegible(c.desde)}</div>` : ""}</div>
+        <div><div class="tarjeta-nombre">${escapar(c.nombre)}${c.estado && ESTADO_COND[c.estado] ? ' <span class="estado-cond '+c.estado+'">'+ESTADO_COND[c.estado]+'</span>' : ""}</div>
+        ${c.desde ? `<div class="tarjeta-meta">Desde ${fechaLegible(c.desde)}</div>` : ""}
+        ${e ? `<div class="cond-sub">${cruzEsp(e)}</div>` : ""}</div>
         <div class="tarjeta-btns">
           <button onclick='abrirForm("condiciones", ${JSON.stringify(c)})'>✏️</button>
           <button class="del" onclick="borrarCondicion('${c.id}')">🗑️</button>
         </div>
       </div>
+      ${meds.length ? `<div class="chips-med">${meds.map(m=>'<span class="chip-med">💊 '+escapar(m.nombre)+(dosisTexto(m)?" · "+escapar(dosisTexto(m)):"")+'</span>').join("")}</div>` : ""}
+      ${pend.map(p=>{ const pe = espInfoDe(p.espId,p.espTxt); return '<div class="cond-sub"><span class="prb-pend">⏳ Pendiente</span> '+escapar(TIPO_ETQ[p.tipo]||"Prueba")+(pe ? ' · pedida por '+cruzEsp(pe) : "")+(p.fecha ? ' · prevista '+fechaLegible(p.fecha) : "")+'</div>'; }).join("")}
+      ${hechas.length ? `<div class="cond-sub">Última prueba: ${escapar(TIPO_ETQ[hechas[0].tipo]||"Prueba")} · ${fechaLegible(hechas[0].fecha)}${hechas.length>1 ? " (+"+(hechas.length-1)+" más)" : ""}</div>` : ""}
       ${c.notas ? `<div class="tarjeta-notas">${escapar(c.notas)}</div>` : ""}
-    </div>`).join("");
+    </div>`; }).join("");
 }
+
+// ---------- Ficha: datos rápidos + resúmenes automáticos de las demás pestañas ----------
+function citasFuturasMed(){
+  const datos = leerJSON("calEventosV1", null);
+  const evs = (datos && Array.isArray(datos.eventos)) ? datos.eventos : [], hoy = hoyISO();
+  return evs.filter(e => e.cat === "medico" && (e.para === perfilActivo || e.para === "Ambas") && e.fecha >= hoy).sort((a,b)=> a.fecha.localeCompare(b.fecha) || (a.hora||"").localeCompare(b.hora||""));
+}
+function renderFicha(){
+  if(!document.getElementById("ficha-datos")) return;
+  const f = leerFicha();
+  const filas = [["Alergias e intolerancias", f.alergias], ["Grupo sanguíneo", f.sangre], ["Contacto de emergencia", [f.contNombre, f.contTel].filter(Boolean).join(" · ")], ["Médico de cabecera", f.cabecera]].filter(x=>x[1]);
+  document.getElementById("ficha-datos").innerHTML = (filas.length ? filas.map(x=>'<div class="ficha-fila"><b>'+x[0]+'</b><span>'+escapar(x[1])+'</span></div>').join("") : '<p class="empty" style="margin:0 0 6px">Aún sin datos. Añade alergias, grupo sanguíneo y un contacto de emergencia.</p>') +
+    '<button type="button" class="btn-mini" onclick="abrirFicha()">✏️ '+(filas.length ? "Editar" : "Añadir datos")+'</button>';
+  const meds = medicacion.filter(m=>m.activa);
+  document.getElementById("ficha-med").innerHTML = meds.length ? meds.map(m=>'<div class="ficha-lin"><span>'+escapar(m.nombre)+(dosisTexto(m) ? " · "+escapar(dosisTexto(m)) : "")+'</span><span class="d">'+escapar([frecTexto(m), (frecDe(m)!=="demanda" && m.horario) ? m.horario : ""].filter(Boolean).join(" · "))+'</span></div>').join("") : '<p class="empty">No hay pastillas activas. Se leen de la pestaña Medicación.</p>';
+  const cit = citasFuturasMed().slice(0,5);
+  document.getElementById("ficha-citas").innerHTML = cit.length ? cit.map(e=>'<div class="ficha-lin"><span>'+(cruzEsp(espInfoDe(e.esp,e.espTxt)) || escapar(e.titulo||"Cita médica"))+'</span><span class="d">'+fechaLegible(e.fecha)+(e.hora ? " · "+escapar(e.hora) : "")+'</span></div>').join("") : '<p class="empty">No hay citas médicas próximas en el Calendario.</p>';
+  const pend = pruebas.filter(p=>p.estado==="pendiente").sort((a,b)=>(a.fecha||"9999").localeCompare(b.fecha||"9999"));
+  const ult = pruebas.filter(p=>p.estado!=="pendiente").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")).slice(0,4);
+  const lineaPrb = p => { const pe = espInfoDe(p.espId,p.espTxt), co = condiciones.find(c=>c.id===p.cond);
+    return '<div class="ficha-lin"><span>'+(p.estado==="pendiente" ? '<span class="prb-pend">⏳</span> ' : "")+escapar(TIPO_ETQ[p.tipo]||"Prueba")+(pe ? ' · '+cruzEsp(pe) : "")+(co ? ' · '+escapar(co.nombre) : "")+'</span><span class="d">'+(p.estado==="pendiente" ? "prevista " : "")+fechaLegible(p.fecha)+'</span></div>'; };
+  document.getElementById("ficha-pruebas").innerHTML = (pend.length || ult.length) ? pend.map(lineaPrb).join("") + ult.map(lineaPrb).join("") : '<p class="empty">Sin pruebas registradas.</p>';
+  const cir = cirugias.slice().sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")).slice(0,5);
+  document.getElementById("ficha-cir").innerHTML = cir.length ? cir.map(c=>'<div class="ficha-lin"><span>'+escapar(c.desc)+'</span><span class="d">'+fechaLegible(c.fecha)+'</span></div>').join("") : '<p class="empty">Sin cirugías registradas.</p>';
+}
+
+// ---------- Pruebas: pedida por / para qué condición / pendiente ----------
+function prbPonerUI(item){
+  document.getElementById("prb-estado").value = (item && item.estado === "pendiente") ? "pendiente" : "hecha";
+  espPonerUI("prb-esp", "prb-esp-otro", item ? item.espId : "", item ? item.espTxt : "");
+  const sc = document.getElementById("prb-cond");
+  sc.innerHTML = '<option value="">— Ninguna —</option>' + condiciones.map(c=>'<option value="'+c.id+'">'+escapar(c.nombre)+'</option>').join("");
+  sc.value = (item && item.cond && condiciones.find(c=>c.id===item.cond)) ? item.cond : "";
+  prbEtiquetaFecha();
+}
+function prbEtiquetaFecha(){ const pe = document.getElementById("prb-estado").value === "pendiente"; document.getElementById("prb-fecha-lab").textContent = pe ? "Fecha prevista (opcional)" : "Fecha"; }
+function extraPrb(p){
+  const pe = espInfoDe(p.espId, p.espTxt), co = condiciones.find(c=>c.id===p.cond);
+  return (pe ? '<div class="cond-sub">Pedida por: '+cruzEsp(pe)+'</div>' : "") + (co ? '<div class="cond-sub">Condición: '+escapar(co.nombre)+'</div>' : "") +
+    (p.estado === "pendiente" ? '<button type="button" class="btn-mini" onclick="marcarPruebaHecha(\''+p.id+'\')">✓ Marcar como hecha</button>' : "");
+}
+function marcarPruebaHecha(id){
+  const p = pruebas.find(x=>x.id===id); if(!p) return;
+  p.estado = "hecha"; p.fecha = hoyISO();
+  guardarJSON(clavePruebas(), pruebas); renderPruebas(); renderFicha();
+}
+
+// ---------- Resumen médico en PDF ----------
+document.getElementById("ficha-pdf").onclick = async ()=>{
+  const msg = document.getElementById("ficha-msg"); msg.textContent = "Preparando el PDF…";
+  try{ await arAsegurarPDF(); }catch(e){ msg.textContent = "No se pudo cargar el generador de PDF. Comprueba que el archivo pdflib.js está subido junto a la app."; return; }
+  const nombre = localStorage.getItem("arInfNombreV1_"+perfilActivo) || perfilActivo;
+  const base = arPdfBase("Resumen médico", "Datos clínicos y seguimiento", nombre); const doc = base.doc; let y = base.y;
+  const f = leerFicha();
+  const datos = [["Alergias e intolerancias", f.alergias], ["Grupo sanguíneo", f.sangre], ["Contacto de emergencia", [f.contNombre, f.contTel].filter(Boolean).join(" · ")], ["Médico de cabecera", f.cabecera]].filter(x=>x[1]);
+  if(datos.length){ y = arTitulo(doc, y, "Datos importantes"); y = arTabla(doc, y, ["Dato","Valor"], datos, {columnStyles:{0:{cellWidth:55, fontStyle:"bold"}}}); }
+  if(condiciones.length){
+    y = arTitulo(doc, y, "Condiciones");
+    y = arTabla(doc, y, ["Condición","Estado","Desde","Especialista","Pastillas relacionadas","Notas"], condiciones.map(c=>{ const e = espInfoDe(c.espId,c.espTxt); const ms = (c.meds||[]).map(id=>medicacion.find(m=>m.id===id)).filter(Boolean).map(m=>m.nombre).join(", ");
+      return [c.nombre, ESTADO_COND[c.estado] || "-", c.desde ? fechaLegible(c.desde) : "-", e ? e.nombre : "-", ms || "-", c.notas || "-"]; }),
+      {columnStyles:{0:{cellWidth:34}, 1:{cellWidth:20}, 2:{cellWidth:20}, 3:{cellWidth:28}, 4:{cellWidth:32}}});
+  }
+  const meds = medicacion.filter(m=>m.activa);
+  if(meds.length){ y = arTitulo(doc, y, "Medicación actual"); y = arTabla(doc, y, ["Pastilla","Dosis","Cuándo","Notas"], meds.map(m=>[m.nombre, dosisTexto(m) || "-", [frecTexto(m), (frecDe(m)!=="demanda" && m.horario) ? m.horario : ""].filter(Boolean).join(" · "), m.notas || "-"]), {columnStyles:{0:{cellWidth:46}, 1:{cellWidth:28}, 2:{cellWidth:44}}}); }
+  const prs = pruebas.slice().sort((a,b)=> (a.estado==="pendiente" ? 0 : 1) - (b.estado==="pendiente" ? 0 : 1) || (b.fecha||"").localeCompare(a.fecha||"")).slice(0,15);
+  if(prs.length){ y = arTitulo(doc, y, "Pruebas (pendientes primero)"); y = arTabla(doc, y, ["Fecha","Prueba","Pedida por","Condición","Estado","Resumen"], prs.map(p=>{ const pe = espInfoDe(p.espId,p.espTxt), co = condiciones.find(c=>c.id===p.cond); const r = (p.notas || "").replace(/\s+/g," ");
+      return [p.fecha ? fechaLegible(p.fecha) : "-", TIPO_ETQ[p.tipo] || "Prueba", pe ? pe.nombre : "-", co ? co.nombre : "-", p.estado==="pendiente" ? "Pendiente" : "Hecha", r ? (r.length>110 ? r.slice(0,110)+"…" : r) : "-"]; }),
+      {columnStyles:{0:{cellWidth:22}, 1:{cellWidth:28}, 2:{cellWidth:26}, 3:{cellWidth:26}, 4:{cellWidth:18}}}); }
+  const cir = cirugias.slice().sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  if(cir.length){ y = arTitulo(doc, y, "Cirugías"); y = arTabla(doc, y, ["Fecha","Intervención","Notas"], cir.map(c=>[c.fecha ? fechaLegible(c.fecha) : "-", c.desc, c.notas || "-"]), {columnStyles:{0:{cellWidth:24}, 1:{cellWidth:70}}}); }
+  const cit = citasFuturasMed().slice(0,8);
+  if(cit.length){ y = arTitulo(doc, y, "Próximas citas médicas"); y = arTabla(doc, y, ["Fecha","Hora","Especialista"], cit.map(e=>{ const i = espInfoDe(e.esp,e.espTxt); return [fechaLegible(e.fecha), e.hora || "-", i ? i.nombre : (e.titulo || "Cita médica")]; }), {columnStyles:{0:{cellWidth:28}, 1:{cellWidth:22}}}); }
+  if(!datos.length && !condiciones.length && !meds.length && !prs.length && !cir.length && !cit.length){ msg.textContent = "Todavía no hay nada que resumir. Añade datos, condiciones o medicación."; return; }
+  arPdfPies(doc, "Resumen elaborado por el paciente a partir de sus propios registros; no sustituye la historia clínica.");
+  const archivo = "resumen-medico-"+hoyISO()+".pdf";
+  try{ doc.save(archivo); }catch(e){}
+  let enlace = ""; try{ enlace = ' <a href="'+doc.output("bloburl")+'" target="_blank" rel="noopener">Abrir el PDF</a>'; }catch(e){}
+  msg.innerHTML = "✓ Resumen generado ("+escapar(archivo)+")."+enlace;
+};
 
 function guardarCirugia(){
   const desc = document.getElementById("cir-desc").value.trim();
@@ -1018,7 +1242,7 @@ document.getElementById("medDiaSiguiente").onclick = () => { selHora = null; con
 function guardarPrueba(){
   const id = document.getElementById("prb-id").value || nuevoId();
   const previo = pruebas.find(x=>x.id===id);
-  const item = { id, fecha: document.getElementById("prb-fecha").value || hoyISO(), tipo: document.getElementById("prb-tipo").value, notas: document.getElementById("prb-notas").value.trim(), archivo: previo?.archivo || null, archivoNombre: previo?.archivoNombre || null, valores: previo?.valores || null, ia: previo?.ia || null };
+  const item = { id, fecha: document.getElementById("prb-fecha").value || hoyISO(), tipo: document.getElementById("prb-tipo").value, estado: document.getElementById("prb-estado").value, espId: espLeer("prb-esp","prb-esp-otro").espId, espTxt: espLeer("prb-esp","prb-esp-otro").espTxt, cond: document.getElementById("prb-cond").value, notas: document.getElementById("prb-notas").value.trim(), archivo: previo?.archivo || null, archivoNombre: previo?.archivoNombre || null, valores: previo?.valores || null, ia: previo?.ia || null };
   const esAnalitica = item.tipo === "analitica";
   // Analíticas: el archivo NO se guarda, solo se lee con la IA. Resto de pruebas: se guarda comprimido (si cabe).
   leerArchivo(document.getElementById("prb-archivo"), !esAnalitica).then(a=>{
@@ -1053,10 +1277,11 @@ function renderPruebas(){
   cont.innerHTML = orden.map(p => `
     <div class="tarjeta">
       <div class="tarjeta-top">
-        <div><div class="tarjeta-nombre">${TIPO_ETQ[p.tipo]||"Otro"}</div>
-        <div class="tarjeta-meta">${fechaLegible(p.fecha)}</div></div>
+        <div><div class="tarjeta-nombre">${TIPO_ETQ[p.tipo]||"Otro"}${p.estado==="pendiente" ? ' <span class="prb-pend">⏳ Pendiente</span>' : ""}</div>
+        <div class="tarjeta-meta">${p.estado==="pendiente" ? "Prevista: " : ""}${fechaLegible(p.fecha)}</div>
+        ${extraPrb(p)}</div>
         <div class="tarjeta-btns">
-          <button onclick='abrirForm("pruebas", ${JSON.stringify({id:p.id,fecha:p.fecha,tipo:p.tipo,notas:p.notas})})'>✏️</button>
+          <button onclick='abrirForm("pruebas", ${JSON.stringify({id:p.id,fecha:p.fecha,tipo:p.tipo,notas:p.notas,estado:p.estado,espId:p.espId,espTxt:p.espTxt,cond:p.cond})})'>✏️</button>
           <button class="del" onclick="borrarPrueba('${p.id}')">🗑️</button>
         </div>
       </div>
@@ -1251,7 +1476,7 @@ function renderCitas(){
   const pasadas = propias.filter(e => e.fecha < hoy).sort((a,b)=> b.fecha.localeCompare(a.fecha));
   const fila = e => `
     <div class="tarjeta">
-      <div class="tarjeta-nombre">${escapar(e.espTxt || e.titulo)}</div>
+      <div class="tarjeta-nombre">${cruzEsp(espInfoDe(e.esp, e.espTxt)) || escapar(e.titulo)}</div>
       <div class="tarjeta-meta">${fechaLegible(e.fecha)}${e.hora ? " · "+e.hora : ""}</div>
       ${e.notas ? `<div class="tarjeta-notas">${escapar(e.notas)}</div>` : ""}
     </div>`;
@@ -1557,10 +1782,10 @@ function arPdfBase(titulo, sub, nombre){
   doc.setDrawColor(200); doc.setLineWidth(0.2); doc.line(15, 39, 195, 39);
   return {doc, y:46};
 }
-function arPdfPies(doc){
+function arPdfPies(doc, txt){
   const n = doc.getNumberOfPages();
   for(let i=1; i<=n; i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(120);
-    doc.text("Registro personal del paciente (autopercepción); no sustituye la valoración clínica.", 15, 289);
+    doc.text(txt || "Registro personal del paciente (autopercepción); no sustituye la valoración clínica.", 15, 289);
     doc.text("Página "+i+" de "+n, 195, 289, {align:"right"}); }
 }
 function arTitulo(doc, y, txt){

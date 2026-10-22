@@ -6,12 +6,12 @@
 const PERFILES = ["Mamy","Filha"];
 const CLAVE_PERFIL_ACTIVO = "dietaPerfilActivo";     // la misma que usa Dieta
 const CLAVE_EVENTOS = "calEventosV1";                // {v:1, eventos:[...]}  (compartido por los dos perfiles)
-const CLAVE_ESP = "calEspecialistasV2";              // [{id,nombre,tono,perfiles}] x 10
+const CLAVE_ESP = "calEspecialistasV2";              // [{id,nombre,tono,perfiles}] x 16
 const CLAVE_VISTA = "calVistaV1";                    // {capas:{nutri,ej,tar}, ocultas:[catId]}
 // Nombres de archivo de los otros módulos (cambialos acá si en tu sitio se llaman distinto)
 const RUTAS = { dieta:"nutricion.html", ejercicio:"ejercicios.html", tareas:"tareas.html" };
 
-// Categorías. El color de "Médico" es el del especialista (ver TONOS); el de la leyenda es solo de referencia.
+// Categorías. Lo médico se dibuja siempre como una cruz del color de su especialista (ver TONOS); el resto, como un punto del color de su categoría.
 // Los colores solo se repiten entre categorías que nunca conviven en el mismo calendario
 // (INSS/Uni, Coche/Prácticas, Ensayo/Proyecto).
 const CATS = [
@@ -45,8 +45,9 @@ const UNI_TIPOS = ["Clase","Examen","Entrega","Estudio","Tutoría"];
 const UNI_IMPORTANTES = ["Examen","Entrega"];
 const LETRAS_DIAS = ["L","M","X","J","V","S","D"];
 const ALTO = 26;   // px de cada tramo de 30 min en la agenda del día
-// 10 tonos de verde, del más oscuro/azulado al más claro/amarillento
-const TONOS = ["#26827c", "#2b9478", "#30a66e", "#36b860", "#3ec74e", "#5bcc50", "#82d162", "#a5d774", "#c2dc86", "#dae198"];
+// 16 colores distintos para los especialistas (el índice coincide con el orden de ESP_INICIALES):
+// verde, naranja, rojo, azul cielo, violeta, rosa, lima, granate, turquesa, marrón, amarillo, índigo, fucsia, cian, gris, hueso
+const TONOS = ["#3ab66c", "#ff8a3d", "#e5484d", "#4cc9f0", "#9d6bff", "#ff7eb6", "#b5e048", "#a8325e", "#1fbfa6", "#b07a4f", "#f5d547", "#4f5de8", "#e23fc4", "#22b8cf", "#9aa5b5", "#d9d2c3"];
 const TONO_LIBRE = "#8fb5a3"; // "Otros": especialidad escrita a mano
 // Catálogo de especialistas: nombre y quién lo usa (editable en "Especialistas y tonos")
 const AMBAS_P = ["Mamy","Filha"];
@@ -60,6 +61,12 @@ const ESP_INICIALES = [
   {n:"Vacunas",          p:AMBAS_P},
   {n:"Analíticas",       p:AMBAS_P},
   {n:"Pruebas",          p:AMBAS_P},
+  {n:"",                 p:AMBAS_P},
+  {n:"Gastroenterólogo", p:AMBAS_P},
+  {n:"Oculista",         p:AMBAS_P},
+  {n:"Ginecólogo",       p:AMBAS_P},
+  {n:"Dentista",         p:AMBAS_P},
+  {n:"",                 p:AMBAS_P},
   {n:"",                 p:AMBAS_P}
 ];
 
@@ -277,6 +284,11 @@ function opcionesPara(cat){
   const permitidos = PERFILES.filter(p => PERFIL_CATS[p].includes(cat));
   return permitidos.length === PERFILES.length ? [...PERFILES, "Ambas"] : permitidos;
 }
+// Marca de color de un evento: cruz (del color del especialista) si es médico, punto (del color de su categoría) si no
+function ptoDe(e){
+  if(e.cat === "medico") return `<span class="pto cruz" style="--c:${colorDe(e)}"></span>`;
+  return `<span class="pto ${catDe(e.cat).indicativo?"ind":""}" style="--c:${colorDe(e)}"></span>`;
+}
 function colorDe(e){
   const ei = espInfo(e);
   return ei ? ei.color : catDe(e.cat).color;
@@ -416,7 +428,7 @@ function renderCabecera(){
 
   document.getElementById("leyendaCats").innerHTML = catsPerfil().map(c =>
     `<button type="button" data-acc="cat" data-id="${c.id}" class="${vista.ocultas.includes(c.id)?"off":""}" aria-pressed="${!vista.ocultas.includes(c.id)}">` +
-    `<span class="pto ${c.indicativo?"ind":""}" style="--c:${c.color}"></span>${esc(c.nombre)}${c.indicativo?" (indicativo)":""}</button>`).join("");
+    `<span class="pto ${c.id==="medico"?"cruz":(c.indicativo?"ind":"")}" style="--c:${c.color}"></span>${esc(c.nombre)}${c.indicativo?" (indicativo)":""}</button>`).join("");
 }
 
 function nutriClase(f){
@@ -438,7 +450,7 @@ function renderGrid(){
     const f = sumarDias(inicio, i);
     const p = parseF(f);
     const evs = eventosDelDia(f);
-    let pts = evs.slice(0,4).map(e => `<span class="pto ${catDe(e.cat).indicativo?"ind":""}" style="--c:${colorDe(e)}"></span>`).join("");
+    let pts = evs.slice(0,4).map(e => ptoDe(e)).join("");
     if(evs.length > 4) pts += `<span class="mas">+${evs.length-4}</span>`;
 
     let cn = "", ce = "", ct = "";
@@ -659,7 +671,7 @@ function renderProximas(){
     const dia = new Date(p.y,p.m-1,p.d).toLocaleDateString("es-ES",{weekday:"short", day:"numeric", month:"short"});
     const ei = espInfo(e);
     return `<button type="button" class="prox" data-acc="ir-fecha" data-f="${f}">
-      <span class="pto ${catDe(e.cat).indicativo?"ind":""}" style="--c:${colorDe(e)}"></span>
+      ${ptoDe(e)}
       <span class="p-t">${e.hora ? esc(e.hora)+(e.fin ? "–"+esc(e.fin) : "")+" · " : ""}${UNI_IMPORTANTES.includes(e.sub) ? "⚠ " : ""}${esc(e.titulo)}${ei ? " · "+esc(ei.nombre) : ""}</span>
       <span class="p-c">${esc(dia)}<br>${cuando}</span></button>`;
   }).join("");
@@ -670,7 +682,7 @@ function renderProximas(){
 function renderEsp(){
   document.getElementById("espLista").innerHTML = especialistas.map((s,i) =>
     `<div class="esp-fila">
-      <button type="button" class="tono" data-acc="tono" data-i="${i}" style="--c:${TONOS[s.tono]}" aria-label="Cambiar el tono del especialista ${i+1}" title="Cambiar tono"></button>
+      <button type="button" class="tono cruz" data-acc="tono" data-i="${i}" style="--c:${TONOS[s.tono]}" aria-label="Cambiar el tono del especialista ${i+1}" title="Cambiar tono"></button>
       <input type="text" class="esp-nombre" data-i="${i}" value="${esc(s.nombre)}" maxlength="30" placeholder="Especialista ${i+1} (vacío = sin usar)" aria-label="Nombre del especialista ${i+1}">
       ${PERFILES.map(p => `<label class="mini"><input type="checkbox" class="esp-perfil" data-i="${i}" data-p="${p}" ${s.perfiles.includes(p)?"checked":""}>${esc(nombreDe(p))}</label>`).join("")}
     </div>`).join("");
@@ -696,7 +708,7 @@ function renderListaMes(){
     if(!evs.length) continue;
     total += evs.length;
     const dia = new Date(y,m-1,d).toLocaleDateString("es-ES",{weekday:"long", day:"numeric", month:"long"});
-    h += `<div style="margin:12px 0 4px;font-weight:700;text-transform:capitalize">${esc(dia)}${f===hoy?" · hoy":""}</div>` + evs.map(e=>`<button type="button" class="prox" data-acc="ir-fecha" data-f="${f}"><span class="pto ${catDe(e.cat).indicativo?"ind":""}" style="--c:${colorDe(e)}"></span><span class="p-t">${e.hora ? esc(e.hora)+(e.fin?"–"+esc(e.fin):"")+" · " : ""}${esc(e.titulo)}${esImp(e)?" ⚠":""}<small style="display:block;opacity:.7">${esc(catDe(e.cat).nombre||"")}${esHecho(e,f)?" · hecho":""}</small></span></button>`).join("");
+    h += `<div style="margin:12px 0 4px;font-weight:700;text-transform:capitalize">${esc(dia)}${f===hoy?" · hoy":""}</div>` + evs.map(e=>`<button type="button" class="prox" data-acc="ir-fecha" data-f="${f}">${ptoDe(e)}<span class="p-t">${e.hora ? esc(e.hora)+(e.fin?"–"+esc(e.fin):"")+" · " : ""}${esc(e.titulo)}${esImp(e)?" ⚠":""}<small style="display:block;opacity:.7">${esc(catDe(e.cat).nombre||"")}${esHecho(e,f)?" · hecho":""}</small></span></button>`).join("");
   }
   box.innerHTML = total ? h : '<p class="vacio">No hay citas este mes con las categorías que tienes activas.</p>';
 }
